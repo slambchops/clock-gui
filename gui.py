@@ -1,29 +1,33 @@
 #!/usr/bin/python
 
-import pygame
-import datetime
 import calendar
-from time import sleep
-import threading
-import subprocess
+import datetime
+import os
+import pygame
 import shlex
+import signal
+import subprocess
+import threading
+import time
 
-BG_FILE='./bg1.jpg'
-COVER_FILE='./music.png'
+BG_FILE='images/bg2.jpg'
+COVER_FILE='images/music.png'
 STATE_FILE="/tmp/state"
-ROBOTO_LIGHT_FILE='./RobotoMono-Light.ttf'
-ROBOTO_REG_FILE='./RobotoMono-Regular.ttf'
-PARSER_EXE='./metadata.sh'
+ROBOTO_LIGHT_FILE='fonts/RobotoMono-Light.ttf'
+ROBOTO_REG_FILE='fonts/RobotoMono-Regular.ttf'
+PARSER_EXE='scripts/metadata.sh'
 
 def cat(file):
     f = open(file,"r")
     t = f.read()
-    print t
     f.close()
     return t
 
 class ClockGui:
     def __init__(self):
+        signal.signal(signal.SIGINT, self.exit)
+        signal.signal(signal.SIGTERM, self.exit)
+
         pygame.display.init()
         pygame.font.init()
         pygame.mouse.set_visible(False)
@@ -37,18 +41,19 @@ class ClockGui:
 
         self.TIME_Y = 40
         self.DATE_Y = 120
-        self.ARTIST_YX = [170, 160]
-        self.SONG_YX  = [190, 160]
-        self.MUSIC_ICON_YX  = [160, 220]
+        self.ARTIST_XY = [65, 180]
+        self.SONG_XY  = [65, 200]
+        self.MUSIC_ICON_XY  = [25, 185]
 
         # Set the height and width of the screen
-        size = [self.HEIGHT, self.WIDTH]
-        self.screen = pygame.display.set_mode(size)
+        #NOTE: X and Y are reversed since the screen on its side
+        self.screen = pygame.display.set_mode([self.HEIGHT, self.WIDTH])
+
+        #program onto a surface that will be rotated later to match the actual screen
+        self.surface = pygame.Surface([self.WIDTH, self.HEIGHT], pygame.SRCALPHA)
 
         self.bg = pygame.image.load(BG_FILE)
-        self.bg = pygame.transform.rotate(self.bg,90)
         self.cover = pygame.image.load(COVER_FILE)
-        self.cover = pygame.transform.rotate(self.cover,90)
 
         # Loop until the user clicks the close button.
         self.done = False
@@ -66,7 +71,7 @@ class ClockGui:
     def run(self):
         while not self.done:
             #refresh the background image
-            self.screen.blit(self.bg, [0,0])
+            self.surface.blit(self.bg, [0,0])
 
             self.drawTime()
 
@@ -74,11 +79,15 @@ class ClockGui:
                 self.drawMusicInfo()
 
             # Go ahead and update the screen with what we've drawn.
+            self.screen.blit(pygame.transform.rotate(self.surface,90), [0,0])
             pygame.display.flip()
 
-            sleep(1)
+            time.sleep(1)
 
         pygame.quit()
+
+    def exit(self,signum, frame):
+        self.done = True
 
     def drawTime(self):
         #generate the strings that will be displayed
@@ -90,14 +99,12 @@ class ClockGui:
         #draw the time
         text = self.timeFont.render(timeString, True, self.BLACK)
         timeW,timeH = self.timeFont.size(timeString)
-        text = pygame.transform.rotate(text, 90)
-        self.screen.blit(text, [self.TIME_Y, (self.WIDTH-timeW)/2])
+        self.surface.blit(text, [(self.WIDTH-timeW)/2, self.TIME_Y])
 
         #draw the date
         text = self.dateFont.render(dateString, True, self.BLACK)
         dateW, dateH = self.dateFont.size(dateString)
-        text = pygame.transform.rotate(text,90)
-        self.screen.blit(text, [self.DATE_Y, (self.WIDTH-dateW)/2])
+        self.surface.blit(text, [(self.WIDTH-dateW)/2, self.DATE_Y])
 
         return
 
@@ -108,20 +115,17 @@ class ClockGui:
         #draw artist
         text = self.songFont.render(artistString, True, self.BLACK)
         w, h = self.songFont.size(artistString)
-        text = pygame.transform.rotate(text,90)
-        self.screen.blit(text, self.ARTIST_YX)
+        self.surface.blit(text, self.ARTIST_XY)
 
         #draw song
         text = self.songFont.render(songString, True, self.BLACK)
         w, h = self.songFont.size(songString)
-        text = pygame.transform.rotate(text,90)
-        self.screen.blit(text, self.SONG_YX)
+        self.surface.blit(text, self.SONG_XY)
 
         #draw music icon
-        self.screen.blit(self.cover, self.MUSIC_ICON_YX)
+        self.surface.blit(self.cover, self.MUSIC_ICON_XY)
 
     def metadata(self):
-        print('Starting the metadata app')
         proc = subprocess.Popen(shlex.split(PARSER_EXE), stdout=subprocess.PIPE)
         while not self.done:
             output = proc.stdout.readline()
@@ -131,9 +135,11 @@ class ClockGui:
                 line = output.strip()
                 if "Title:" in line:
                     self.song = self.getMetaValue("Title", line)
+                    self.song = self.song[1:]
                 if "Artist:" in line:
                     self.artist = self.getMetaValue("Artist:", line)
         rc = process.poll()
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         return rc
 
     def getMetaValue(self, key, line):
