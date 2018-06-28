@@ -41,9 +41,9 @@ class ClockGui:
 
         self.TIME_Y = 40
         self.DATE_Y = 120
-        self.ARTIST_XY = [65, 180]
-        self.SONG_XY  = [65, 200]
-        self.MUSIC_ICON_XY  = [25, 185]
+        self.ARTIST_XY = [60, 170]
+        self.SONG_XY  = [60, 190]
+        self.MUSIC_ICON_XY  = [20, 175]
 
         # Set the height and width of the screen
         #NOTE: X and Y are reversed since the screen on its side
@@ -62,7 +62,7 @@ class ClockGui:
 
         self.timeFont = pygame.font.Font(ROBOTO_LIGHT_FILE, 63)
         self.dateFont = pygame.font.Font(ROBOTO_REG_FILE, 22)
-        self.songFont = pygame.font.Font(ROBOTO_REG_FILE, 14)
+        self.songFont = pygame.font.Font(ROBOTO_REG_FILE, 15)
 
         self.mdThread = threading.Thread(target=self.metadata)
         self.mdThread.daemon = True
