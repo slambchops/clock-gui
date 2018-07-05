@@ -1,12 +1,13 @@
 #!/bin/sh
 
-cd /root/gui/scripts
-
+GUI=/usr/share/gui
 TMP=/tmp/shair
 HOSTNAME="$(cat /etc/hostname)"
 STATE=/tmp/state
 ON=./stream-on.sh
 OFF=./stream-off.sh
+
+cd $GUI/scripts
 
 rm $TMP
 touch $TMP
