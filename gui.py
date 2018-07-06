@@ -21,10 +21,13 @@ ROBOTO_REG_FILE='fonts/RobotoMono-Regular.ttf'
 PARSER_EXE='scripts/metadata.sh'
 
 def cat(file):
-    f = open(file,"r")
-    t = f.read()
-    f.close()
-    return t
+    try:
+        f = open(file,"r")
+        t = f.read()
+        f.close()
+        return t
+    except:
+        return ""
 
 def getIP(ifname):
     try:
@@ -152,7 +155,8 @@ class ClockGui:
         proc = subprocess.Popen(shlex.split(PARSER_EXE), stdout=subprocess.PIPE)
         while not self.done:
             output = proc.stdout.readline()
-            if output == '' and process.poll() is not None:
+            if output == '' and proc.poll() is not None:
+                print("Metadata app failed...")
                 break
             if output:
                 line = output.strip()
@@ -161,8 +165,13 @@ class ClockGui:
                     self.song = self.song[1:]
                 if "Artist:" in line:
                     self.artist = self.getMetaValue("Artist:", line)
-        rc = process.poll()
-        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except:
+            print("Could not kill metadata process. Maybe it is already dead?")
+
+        rc = proc.poll()
         return rc
 
     def getMetaValue(self, key, line):
